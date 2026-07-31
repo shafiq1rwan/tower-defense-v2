@@ -36,6 +36,10 @@ jobs:
         run: npm run build
 
       - uses: actions/configure-pages@v5
+        with:
+          # Creates the Pages site (source: GitHub Actions) if it doesn't
+          # exist yet, so the repo needs no manual Pages setup at all.
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
