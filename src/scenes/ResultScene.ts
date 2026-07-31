@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
 import { CSS, DEPTH, FONT_DISPLAY, STAGE_H } from '../core/constants';
-import { Button, board, drawPanel, fadeToScene, formatGold, formatTime, ribbon, styles } from '../core/ui';
+import { Button, board, displayLift, drawPanel, fadeToScene, formatGold, formatTime, ribbon, styles } from '../core/ui';
 import { audio } from '../core/audio';
 import { save } from '../core/save';
 import { STAGES } from '../data/stages';
@@ -56,7 +56,7 @@ export class ResultScene extends Phaser.Scene {
     // Stage name rides a ribbon pinned to the board's top edge.
     ribbon(this, cx, cy - panelH / 2 + 6, Math.min(panelW - 120, 380)).setDepth(DEPTH.hud + 1);
     this.add
-      .text(cx, cy - panelH / 2 - 2, stage.name, styles.plate(21, CSS.ribbonInk))
+      .text(cx, cy - panelH / 2 - 2, stage.name, styles.plate(22, CSS.ribbonInk))
       .setOrigin(0.5)
       .setDepth(DEPTH.hud + 2);
 
@@ -144,7 +144,7 @@ export class ResultScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
       .setDepth(DEPTH.hud + 1);
     this.add
-      .text(cx + inset, y, value, {
+      .text(cx + inset, y + displayLift(24), value, {
         fontFamily: FONT_DISPLAY,
         fontSize: '24px',
         color: CSS.goldInk,

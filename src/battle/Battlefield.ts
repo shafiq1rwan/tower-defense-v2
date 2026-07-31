@@ -68,8 +68,11 @@ export class Battlefield {
       const cloud = this.scene.add
         .image(Phaser.Math.Between(0, this.width), Phaser.Math.Between(46, 210), 'fx-cloud')
         .setDepth(DEPTH.sky + 1)
-        .setAlpha(Phaser.Math.FloatBetween(0.45, 0.85))
-        .setScale(Phaser.Math.FloatBetween(0.55, 1.3));
+        .setAlpha(Phaser.Math.FloatBetween(0.5, 0.9))
+        // The texture is quarter-res; 4x nearest-neighbour scaling gives the
+        // clouds the same chunky pixel edges as the Tiny Swords art (the pack
+        // itself ships no sky sprites).
+        .setScale(4 * Phaser.Math.FloatBetween(0.55, 1.25));
       cloud.setData('speed', Phaser.Math.FloatBetween(3, 9));
       this.clouds.push(cloud);
     }
@@ -78,17 +81,22 @@ export class Battlefield {
   private makeCloudTexture() {
     if (this.scene.textures.exists('fx-cloud')) return;
     const g = this.scene.make.graphics({ x: 0, y: 0 }, false);
+    // Flat-bottomed puff cluster with a subtle under-shade, at 1/4 scale.
+    g.fillStyle(0xd6ecf5, 1);
+    g.fillCircle(15, 13.5, 7);
+    g.fillCircle(26, 12, 6);
+    g.fillRect(7, 13, 29, 5.5);
     g.fillStyle(0xffffff, 1);
     const puffs: Array<[number, number, number]> = [
-      [60, 46, 30],
-      [104, 40, 24],
-      [30, 50, 22],
-      [140, 50, 18],
-      [86, 58, 26],
+      [15, 11.5, 7.5],
+      [26, 10, 6],
+      [7.5, 12.5, 5.5],
+      [35, 12.5, 4.5],
+      [21.5, 14, 6.5],
     ];
     puffs.forEach(([x, y, r]) => g.fillCircle(x, y, r));
-    g.fillRect(28, 50, 116, 22);
-    g.generateTexture('fx-cloud', 180, 80);
+    g.fillRect(7, 12.5, 29, 4);
+    g.generateTexture('fx-cloud', 45, 20);
     g.destroy();
   }
 

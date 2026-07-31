@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
 import { CSS, DEPTH, FONT_DISPLAY, FONT_UI, HUD_TOP, STAGE_H, TOPBAR_H } from '../core/constants';
-import { Bar, Button, board, drawPanel, formatTime, ribbon, styles } from '../core/ui';
+import { Bar, Button, board, displayLift, drawPanel, formatTime, ribbon, styles } from '../core/ui';
 import { audio } from '../core/audio';
 import { save } from '../core/save';
 import { STAGES } from '../data/stages';
@@ -65,7 +65,7 @@ class TroopCard extends Phaser.GameObjects.Container {
     this.add(coin);
 
     this.costText = scene.add
-      .text(6, pillY - 1, String(def.cost), {
+      .text(6, pillY + displayLift(21), String(def.cost), {
         fontFamily: FONT_DISPLAY,
         fontSize: '21px',
         color: CSS.goldLight,
@@ -77,14 +77,14 @@ class TroopCard extends Phaser.GameObjects.Container {
 
     // Name strip.
     const name = scene.add
-      .text(0, -h / 2 + 17, def.name, {
+      .text(0, -h / 2 + 18, def.name, {
         fontFamily: FONT_UI,
-        fontSize: '15px',
+        fontSize: '16px',
         fontStyle: '800',
         color: CSS.buttonInk,
       })
       .setOrigin(0.5);
-    if (name.width > w - 16) name.setFontSize(13);
+    if (name.width > w - 16) name.setFontSize(14);
     this.add(name);
 
     // Cooldown wipe + countdown.
@@ -273,11 +273,11 @@ export class HudScene extends Phaser.Scene {
 
     ribbon(this, W / 2, 36, ribbonW).setDepth(DEPTH.hud + 1);
     this.add
-      .text(W / 2, 22, stage.name, styles.plate(21, CSS.ribbonInk))
+      .text(W / 2, 21, stage.name, styles.plate(22, CSS.ribbonInk))
       .setOrigin(0.5, 0.5)
       .setDepth(DEPTH.hud + 2);
     this.timerText = this.add
-      .text(W / 2, 45, '0:00', styles.body(14, '#7a5c1d'))
+      .text(W / 2, 45, '0:00', styles.body(15, '#7a5c1d'))
       .setOrigin(0.5, 0.5)
       .setDepth(DEPTH.hud + 2);
   }
@@ -307,7 +307,7 @@ export class HudScene extends Phaser.Scene {
       .setDepth(DEPTH.hud + 2);
 
     this.goldText = this.add
-      .text(walletX + 14, HUD_TOP + 50, '0', {
+      .text(walletX + 14, HUD_TOP + 52 + displayLift(32), '0', {
         fontFamily: FONT_DISPLAY,
         fontSize: '32px',
         color: CSS.goldLight,
@@ -391,7 +391,7 @@ export class HudScene extends Phaser.Scene {
     c.add(this.cannonFill);
 
     this.cannonLabel = this.add
-      .text(0, 0, 'CANNON', {
+      .text(0, -Math.round(h * 0.055) + displayLift(19), 'CANNON', {
         fontFamily: FONT_DISPLAY,
         fontSize: '19px',
         color: '#77716a',

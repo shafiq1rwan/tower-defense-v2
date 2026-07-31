@@ -54,6 +54,10 @@ export const styles = {
   }),
 };
 
+/** Luckiest Guy renders its glyphs low inside the text box; lifting display
+ *  text by ~10% of its size puts it back on the visual centre line. */
+export const displayLift = (fontSize: number) => -Math.round(fontSize * 0.1);
+
 /** Shrinks a text object until it fits `maxWidth`. */
 export function fitText(text: Phaser.GameObjects.Text, maxWidth: number, minSize = 10) {
   let size = Number.parseInt(String(text.style.fontSize), 10);
@@ -180,6 +184,8 @@ export class Button extends Phaser.GameObjects.Container {
   private readonly btnW: number;
   private readonly btnH: number;
   private readonly hasIcon: boolean;
+  private readonly labelBaseY: number;
+  private readonly iconBaseY: number;
 
   constructor(scene: Phaser.Scene, x: number, y: number, text: string, onClick: () => void, opts: ButtonOpts = {}) {
     super(scene, x, y);
@@ -194,18 +200,25 @@ export class Button extends Phaser.GameObjects.Container {
     this.slice = scene.add.nineslice(0, 0, BUTTON_TEX[this.variant].up, undefined, w, h, ix, ix, iy, iy);
     this.add(this.slice);
 
+    // Two corrections keep content visually centred: the button art's face
+    // sits above the geometric centre (the bottom edge carries the 3D lip),
+    // and Luckiest Guy renders its glyphs low inside the text box.
+    const fs = opts.fontSize ?? 26;
+    this.iconBaseY = -Math.round(h * 0.055) - 1;
+    this.labelBaseY = -Math.round(h * 0.055 + fs * 0.1);
+
     if (opts.icon) {
       const size = Math.min(w, h) * (text ? 0.5 : 0.62);
-      this.iconImg = scene.add.image(text ? -w / 2 + h * 0.52 : 0, -1, opts.icon);
+      this.iconImg = scene.add.image(text ? -w / 2 + h * 0.52 : 0, this.iconBaseY, opts.icon);
       this.iconImg.setDisplaySize(size, size);
       this.add(this.iconImg);
     }
 
     const ink = opts.textColor ?? buttonInk(this.variant);
     this.label = scene.add
-      .text(opts.icon && text ? 14 : 0, -2, text, {
+      .text(opts.icon && text ? 14 : 0, this.labelBaseY, text, {
         fontFamily: FONT_DISPLAY,
-        fontSize: `${opts.fontSize ?? 26}px`,
+        fontSize: `${fs}px`,
         color: ink,
         // Only the light-on-red combination needs an outline to read.
         ...(this.variant === 'red' ? { stroke: '#5e1c10', strokeThickness: 4 } : {}),
@@ -241,8 +254,8 @@ export class Button extends Phaser.GameObjects.Container {
     if (!this.enabled) return;
     this.slice.setTexture(BUTTON_TEX[this.variant][down ? 'down' : 'up']);
     const dy = down ? 3 : 0;
-    this.label.y = -2 + dy;
-    if (this.iconImg) this.iconImg.y = -1 + dy;
+    this.label.y = this.labelBaseY + dy;
+    if (this.iconImg) this.iconImg.y = this.iconBaseY + dy;
     this.setScale(down ? 0.97 : 1);
   }
 

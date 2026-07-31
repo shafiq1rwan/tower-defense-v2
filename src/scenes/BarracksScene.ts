@@ -53,9 +53,9 @@ export class BarracksScene extends Phaser.Scene {
     const g = this.add.graphics().setDepth(DEPTH.hud);
     drawPanel(g, -20, -30, W + 40, 88, { radius: 18, fill: 0x2f2330, edge: 0x1a1119, sheen: 0x453447 });
 
-    ribbon(this, W / 2, 38, 300).setDepth(DEPTH.hud + 1);
+    ribbon(this, W / 2, 38, 320).setDepth(DEPTH.hud + 1);
     this.add
-      .text(W / 2, 30, 'Barracks', styles.plate(25, CSS.ribbonInk))
+      .text(W / 2, 30, 'Barracks', styles.plate(28, CSS.ribbonInk))
       .setOrigin(0.5)
       .setDepth(DEPTH.hud + 2);
 
@@ -97,9 +97,9 @@ export class BarracksScene extends Phaser.Scene {
 
       card.add(board(this, 0, 0, w, h));
 
-      card.add(this.add.text(0, -h / 2 + 16, def.name, styles.plate(21, CSS.boardInk)).setOrigin(0.5, 0));
+      card.add(this.add.text(0, -h / 2 + 15, def.name, styles.plate(22, CSS.boardInk)).setOrigin(0.5, 0));
 
-      const levelText = this.add.text(0, -h / 2 + 48, '', styles.body(15, CSS.boardMuted)).setOrigin(0.5, 0);
+      const levelText = this.add.text(0, -h / 2 + 48, '', styles.body(16, CSS.boardMuted)).setOrigin(0.5, 0);
       card.add(levelText);
 
       const valueText = this.add.text(0, -h / 2 + 72, '', styles.body(18, CSS.goldInk)).setOrigin(0.5, 0);
@@ -175,12 +175,12 @@ export class BarracksScene extends Phaser.Scene {
           .play(animKey(def.tex, 'idle')),
       );
 
-      card.add(this.add.text(0, -h / 2 + 112, def.name, styles.plate(20, CSS.boardInk)).setOrigin(0.5, 0));
+      card.add(this.add.text(0, -h / 2 + 110, def.name, styles.plate(22, CSS.boardInk)).setOrigin(0.5, 0));
 
-      const levelText = this.add.text(0, -h / 2 + 140, '', styles.body(15, CSS.boardMuted)).setOrigin(0.5, 0);
+      const levelText = this.add.text(0, -h / 2 + 140, '', styles.body(16, CSS.boardMuted)).setOrigin(0.5, 0);
       card.add(levelText);
 
-      const statText = this.add.text(0, -h / 2 + 162, '', styles.body(15, CSS.goldInk)).setOrigin(0.5, 0);
+      const statText = this.add.text(0, -h / 2 + 163, '', styles.body(16, CSS.goldInk)).setOrigin(0.5, 0);
       card.add(statText);
 
       const btn = new Button(this, 0, h / 2 - 31, '', () => this.buyTroop(key), {
