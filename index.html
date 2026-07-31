@@ -53,9 +53,16 @@
         -webkit-user-select: none;
         user-select: none;
       }
+      /* Pinned to the visual viewport: `dvh` tracks the browser bars on
+         phones as they collapse, so the canvas always spans the full screen
+         instead of the shrunken rectangle `100%` can leave behind. */
       #game {
-        width: 100%;
-        height: 100%;
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        background: #1b2432;
       }
       #game canvas {
         display: block;

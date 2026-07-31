@@ -58,6 +58,33 @@ export const isStandalone = () =>
   window.matchMedia('(display-mode: fullscreen)').matches ||
   (navigator as unknown as { standalone?: boolean }).standalone === true;
 
+/* ---------------------------- immersive mode ---------------------------- */
+
+/** On touch devices, ask for real fullscreen (and a landscape lock) on the
+ *  first tap — the same behaviour as a native game. Browsers only allow this
+ *  from a user gesture, hence the pointer listener. iPhones have no
+ *  Fullscreen API at all; there the installed PWA is the fullscreen path,
+ *  which the manifest already handles. */
+export function installImmersiveMode() {
+  if (!window.matchMedia('(pointer: coarse)').matches) return;
+
+  const tryEnter = () => {
+    if (isStandalone() || document.fullscreenElement) return;
+    const el = document.documentElement;
+    if (!el.requestFullscreen) return;
+    el.requestFullscreen({ navigationUI: 'hide' })
+      .then(() => {
+        type LockableOrientation = ScreenOrientation & { lock?: (o: string) => Promise<void> };
+        (screen.orientation as LockableOrientation)?.lock?.('landscape').catch(() => {});
+      })
+      .catch(() => {
+        /* denied or unsupported — the game still runs in the tab */
+      });
+  };
+
+  window.addEventListener('pointerup', tryEnter, { passive: true });
+}
+
 /* --------------------------- orientation guard -------------------------- */
 
 /** The battlefield is inherently wide, so on handhelds we ask for landscape

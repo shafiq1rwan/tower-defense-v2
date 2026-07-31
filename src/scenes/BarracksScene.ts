@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
-import { COLORS, CSS, DEPTH, FONT_DISPLAY, STAGE_H } from '../core/constants';
-import { Button, drawPanel, fadeToScene, formatGold, styles } from '../core/ui';
+import { CSS, DEPTH, FONT_DISPLAY, STAGE_H } from '../core/constants';
+import { Button, board, drawPanel, fadeToScene, formatGold, ribbon, styles } from '../core/ui';
 import { audio } from '../core/audio';
 import {
   MAX_TROOP_LEVEL,
@@ -53,14 +53,16 @@ export class BarracksScene extends Phaser.Scene {
     const g = this.add.graphics().setDepth(DEPTH.hud);
     drawPanel(g, -20, -30, W + 40, 88, { radius: 18, fill: 0x2f2330, edge: 0x1a1119, sheen: 0x453447 });
 
-    this.add.text(W / 2, 18, 'Barracks', styles.heading(30, CSS.gold)).setOrigin(0.5, 0).setDepth(DEPTH.hud + 1);
+    ribbon(this, W / 2, 38, 300).setDepth(DEPTH.hud + 1);
+    this.add
+      .text(W / 2, 30, 'Barracks', styles.plate(25, CSS.ribbonInk))
+      .setOrigin(0.5)
+      .setDepth(DEPTH.hud + 2);
 
     new Button(this, 84, 32, '← Back', () => fadeToScene(this, 'StageSelect'), {
       width: 128,
-      height: 46,
+      height: 48,
       fontSize: 18,
-      fill: 0x4a2c19,
-      edge: 0x2b1810,
     }).setDepth(DEPTH.hud + 1);
 
     this.add.image(W - 150, 32, 'ui_gold').setScale(0.28).setDepth(DEPTH.hud + 1);
@@ -84,7 +86,7 @@ export class BarracksScene extends Phaser.Scene {
     const gap = 16;
     const cols = UPGRADES.length;
     const w = Math.min(310, (W - 80 - gap * (cols - 1)) / cols);
-    const h = 152;
+    const h = 158;
     const cy = 136 + h / 2;
     const rowW = w * cols + gap * (cols - 1);
     const left = (W - rowW) / 2;
@@ -93,32 +95,20 @@ export class BarracksScene extends Phaser.Scene {
       const x = left + w / 2 + i * (w + gap);
       const card = this.add.container(x, cy).setDepth(DEPTH.hud);
 
-      const bg = this.add.graphics();
-      drawPanel(bg, -w / 2, -h / 2, w, h, {
-        radius: 16,
-        fill: 0x3d3350,
-        edge: 0x221b2e,
-        sheen: 0x50446a,
-      });
-      card.add(bg);
+      card.add(board(this, 0, 0, w, h));
 
-      card.add(this.add.text(0, -h / 2 + 14, def.name, styles.heading(21, CSS.parchment)).setOrigin(0.5, 0));
+      card.add(this.add.text(0, -h / 2 + 16, def.name, styles.plate(21, CSS.boardInk)).setOrigin(0.5, 0));
 
-      const levelText = this.add.text(0, -h / 2 + 46, '', styles.body(15, '#c6b7d4')).setOrigin(0.5, 0);
+      const levelText = this.add.text(0, -h / 2 + 48, '', styles.body(15, CSS.boardMuted)).setOrigin(0.5, 0);
       card.add(levelText);
 
-      const valueText = this.add.text(0, -h / 2 + 70, '', styles.body(18, CSS.goldLight)).setOrigin(0.5, 0);
+      const valueText = this.add.text(0, -h / 2 + 72, '', styles.body(18, CSS.goldInk)).setOrigin(0.5, 0);
       card.add(valueText);
 
-      // No button sound: buyUpgrade plays 'upgrade' on success / 'deny' on
-      // failure, and the click chirp would double up with either.
-      const btn = new Button(this, 0, h / 2 - 30, '', () => this.buyUpgrade(def.id), {
-        width: w - 28,
-        height: 44,
+      const btn = new Button(this, 0, h / 2 - 33, '', () => this.buyUpgrade(def.id), {
+        width: w - 32,
+        height: 46,
         fontSize: 17,
-        fill: 0x2f7a34,
-        edge: 0x1b4a1e,
-        sheen: 0x46a04c,
         sound: 'click',
       });
       card.add(btn);
@@ -159,14 +149,14 @@ export class BarracksScene extends Phaser.Scene {
 
   private buildTroops(W: number) {
     const owned = unlockedTroops(save.data.cleared);
-    this.add.text(40, 306, 'TROOPS', styles.heading(20, '#cbb9d6')).setDepth(DEPTH.hud);
+    this.add.text(40, 312, 'TROOPS', styles.heading(20, '#cbb9d6')).setDepth(DEPTH.hud);
 
     const gap = 16;
     const cols = Math.max(owned.length, 1);
     // Capped so a two-troop roster doesn't stretch into two huge slabs.
     const w = Math.min(238, (W - 80 - gap * (cols - 1)) / cols);
-    const h = 232;
-    const cy = 342 + h / 2;
+    const h = 238;
+    const cy = 348 + h / 2;
     const rowW = w * cols + gap * (cols - 1);
     const left = (W - rowW) / 2;
 
@@ -175,38 +165,28 @@ export class BarracksScene extends Phaser.Scene {
       const x = left + w / 2 + i * (w + gap);
       const card = this.add.container(x, cy).setDepth(DEPTH.hud);
 
-      const bg = this.add.graphics();
-      drawPanel(bg, -w / 2, -h / 2, w, h, {
-        radius: 16,
-        fill: COLORS.wood,
-        edge: COLORS.woodDark,
-        sheen: COLORS.woodLight,
-      });
-      card.add(bg);
+      card.add(board(this, 0, 0, w, h));
 
       card.add(
         this.add
-          .sprite(0, -h / 2 + 66, def.tex)
+          .sprite(0, -h / 2 + 70, def.tex)
           .setOrigin(0.47, 0.45)
           .setScale(Math.min(w / 165, 1))
           .play(animKey(def.tex, 'idle')),
       );
 
-      card.add(this.add.text(0, -h / 2 + 108, def.name, styles.heading(20, CSS.parchment)).setOrigin(0.5, 0));
+      card.add(this.add.text(0, -h / 2 + 112, def.name, styles.plate(20, CSS.boardInk)).setOrigin(0.5, 0));
 
-      const levelText = this.add.text(0, -h / 2 + 136, '', styles.body(15, '#f0dfbe')).setOrigin(0.5, 0);
+      const levelText = this.add.text(0, -h / 2 + 140, '', styles.body(15, CSS.boardMuted)).setOrigin(0.5, 0);
       card.add(levelText);
 
-      const statText = this.add.text(0, -h / 2 + 158, '', styles.body(15, CSS.goldLight)).setOrigin(0.5, 0);
+      const statText = this.add.text(0, -h / 2 + 162, '', styles.body(15, CSS.goldInk)).setOrigin(0.5, 0);
       card.add(statText);
 
-      const btn = new Button(this, 0, h / 2 - 28, '', () => this.buyTroop(key), {
-        width: w - 28,
-        height: 42,
+      const btn = new Button(this, 0, h / 2 - 31, '', () => this.buyTroop(key), {
+        width: w - 32,
+        height: 44,
         fontSize: 16,
-        fill: 0x2f7a34,
-        edge: 0x1b4a1e,
-        sheen: 0x46a04c,
         sound: 'click',
       });
       card.add(btn);

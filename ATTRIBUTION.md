@@ -23,7 +23,7 @@ Files used, all from `Tiny Swords (Update 010)`:
 | `public/assets/buildings/*` | `Factions/Knights/Buildings/*`, `Factions/Goblins/Buildings/*` |
 | `public/assets/terrain/*`   | `Terrain/Ground`, `Resources/Trees`, `Resources/Sheep`, `Deco` |
 | `public/assets/fx/*`        | `Effects/Explosion`, `Effects/Fire`                 |
-| `public/assets/ui/*`        | `Resources/Resources` (gold)                        |
+| `public/assets/ui/*`        | `UI/Buttons`, `UI/Banners`, `UI/Ribbons`, `UI/Icons`, `Resources/Resources` (gold) |
 | `public/icons/*`            | Generated from `Castle_Blue.png` by `tools/make-icons.mjs` |
 
 Sprites were copied and renamed only — no pixels were altered.

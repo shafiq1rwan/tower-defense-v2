@@ -24,6 +24,13 @@ export const styles = {
     stroke: CSS.woodDark,
     strokeThickness: 6,
   }),
+  /** Display type for the light UI-kit surfaces (boards, ribbons, buttons).
+   *  No stroke: dark ink on parchment outlines itself into a blob. */
+  plate: (size = 24, color: string = CSS.boardInk): Style => ({
+    fontFamily: FONT_DISPLAY,
+    fontSize: `${size}px`,
+    color,
+  }),
   body: (size = 20, color: string = CSS.parchment): Style => ({
     fontFamily: FONT_UI,
     fontSize: `${size}px`,
@@ -108,125 +115,155 @@ export function drawPanel(
   g.strokeRoundedRect(x, y, w, h, r);
 }
 
-/** Convenience: a Graphics-backed panel as its own game object. */
-export function panel(
+/* ------------------------------------------------------------------ */
+/* Tiny Swords UI kit                                                  */
+/* ------------------------------------------------------------------ */
+
+/** A carved parchment board (the pack's `Carved_9Slides`), nine-sliced to any
+ *  size. The base surface for cards, dialogs and the deploy bar. */
+export function board(
   scene: Phaser.Scene,
   x: number,
   y: number,
   w: number,
   h: number,
-  o: PanelOpts = {},
-): Phaser.GameObjects.Graphics {
-  const g = scene.add.graphics();
-  drawPanel(g, x - w / 2, y - h / 2, w, h, o);
-  return g;
+): Phaser.GameObjects.NineSlice {
+  return scene.add.nineslice(x, y, 'ui_carved_9s', undefined, w, h, 30, 30, 30, 30);
+}
+
+/** A title ribbon (the pack's `Ribbon_*_3Slides`), stretched horizontally.
+ *  64px tall; the banner field sits in the upper ~44px, tails hang below. */
+export function ribbon(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  w: number,
+  color: 'yellow' | 'blue' | 'red' = 'yellow',
+): Phaser.GameObjects.NineSlice {
+  return scene.add.nineslice(x, y, `ui_ribbon_${color}`, undefined, Math.max(160, w), 64, 56, 56);
 }
 
 /* ------------------------------------------------------------------ */
 /* Buttons                                                             */
 /* ------------------------------------------------------------------ */
 
+export type ButtonVariant = 'blue' | 'red';
+
+const BUTTON_TEX: Record<ButtonVariant, { up: string; down: string }> = {
+  blue: { up: 'ui_button_blue_9s', down: 'ui_button_blue_9s_pressed' },
+  red: { up: 'ui_button_red_9s', down: 'ui_button_red_9s_pressed' },
+};
+const BUTTON_DISABLED_TEX = 'ui_button_disable_9s';
+
+const buttonInk = (variant: ButtonVariant) => (variant === 'blue' ? CSS.buttonInk : '#ffe9c8');
+
 export interface ButtonOpts {
   width?: number;
   height?: number;
-  fill?: number;
-  edge?: number;
-  sheen?: number;
+  variant?: ButtonVariant;
   fontSize?: number;
   textColor?: string;
+  /** Texture key of a pack icon, centred when there is no text. */
   icon?: string;
   sound?: Parameters<typeof audio.play>[0];
 }
 
+/** A pack-art button: `Button_*_9Slides` with the real pressed texture on tap
+ *  and the grey `Button_Disable` art when disabled. */
 export class Button extends Phaser.GameObjects.Container {
-  private bg: Phaser.GameObjects.Graphics;
+  private slice: Phaser.GameObjects.NineSlice;
   private label: Phaser.GameObjects.Text;
   private iconImg?: Phaser.GameObjects.Image;
   private enabled = true;
-  private readonly opts: Required<Pick<ButtonOpts, 'width' | 'height' | 'fill' | 'edge'>> & ButtonOpts;
+  private readonly variant: ButtonVariant;
+  // btnW/btnH, not w/h: Phaser's Transform component already owns `w`.
+  private readonly btnW: number;
+  private readonly btnH: number;
+  private readonly hasIcon: boolean;
 
   constructor(scene: Phaser.Scene, x: number, y: number, text: string, onClick: () => void, opts: ButtonOpts = {}) {
     super(scene, x, y);
-    // Spread first: callers routinely pass `fill: undefined` from an optional
-    // variable, and that must fall through to the default rather than win.
-    const o = {
-      ...opts,
-      width: opts.width ?? 240,
-      height: opts.height ?? 68,
-      fill: opts.fill ?? COLORS.wood,
-      edge: opts.edge ?? COLORS.woodDark,
-    };
-    this.opts = o;
+    const w = (this.btnW = opts.width ?? 240);
+    const h = (this.btnH = opts.height ?? 68);
+    this.variant = opts.variant ?? 'blue';
+    this.hasIcon = Boolean(opts.icon);
 
-    this.bg = scene.add.graphics();
-    this.add(this.bg);
-    this.redraw(false);
+    // Corner insets shrink on short buttons so the slices never overlap.
+    const ix = Math.max(10, Math.min(28, Math.floor(w / 2) - 2));
+    const iy = Math.max(10, Math.min(28, Math.floor(h / 2) - 2));
+    this.slice = scene.add.nineslice(0, 0, BUTTON_TEX[this.variant].up, undefined, w, h, ix, ix, iy, iy);
+    this.add(this.slice);
 
-    if (o.icon) {
-      this.iconImg = scene.add.image(-o.width / 2 + 34, 0, o.icon).setScale(0.42);
+    if (opts.icon) {
+      const size = Math.min(w, h) * (text ? 0.5 : 0.62);
+      this.iconImg = scene.add.image(text ? -w / 2 + h * 0.52 : 0, -1, opts.icon);
+      this.iconImg.setDisplaySize(size, size);
       this.add(this.iconImg);
     }
 
+    const ink = opts.textColor ?? buttonInk(this.variant);
     this.label = scene.add
-      .text(o.icon ? 12 : 0, -2, text, styles.heading(o.fontSize ?? 26, o.textColor ?? CSS.parchment))
+      .text(opts.icon && text ? 14 : 0, -2, text, {
+        fontFamily: FONT_DISPLAY,
+        fontSize: `${opts.fontSize ?? 26}px`,
+        color: ink,
+        // Only the light-on-red combination needs an outline to read.
+        ...(this.variant === 'red' ? { stroke: '#5e1c10', strokeThickness: 4 } : {}),
+      })
       .setOrigin(0.5);
-    fitText(this.label, o.width - (o.icon ? 80 : 34));
+    fitText(this.label, w - (opts.icon ? h + 30 : 30));
     this.add(this.label);
 
-    this.setSize(o.width, o.height);
-    this.setInteractive(
-      new Phaser.Geom.Rectangle(0, 0, o.width, o.height),
-      Phaser.Geom.Rectangle.Contains,
-    );
+    this.setSize(w, h);
+    this.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
     (this.input as Phaser.Types.Input.InteractiveObject).cursor = 'pointer';
 
     this.on('pointerdown', () => {
       if (!this.enabled) return;
-      this.redraw(true);
-      this.setScale(0.96);
+      this.setPressed(true);
     });
-    this.on('pointerout', () => {
-      this.redraw(false);
-      this.setScale(1);
-    });
+    this.on('pointerout', () => this.setPressed(false));
     this.on('pointerup', () => {
       if (!this.enabled) {
         audio.play('deny');
         return;
       }
-      this.redraw(false);
+      this.setPressed(false);
       scene.tweens.add({ targets: this, scale: 1, duration: 120, ease: 'Back.easeOut' });
-      audio.play(o.sound ?? 'click');
+      audio.play(opts.sound ?? 'click');
       onClick();
     });
 
     scene.add.existing(this);
   }
 
-  private redraw(pressed: boolean) {
-    const { width: w, height: h, fill, edge } = this.opts;
-    this.bg.clear();
-    const dim = this.enabled ? 1 : 0.45;
-    drawPanel(this.bg, -w / 2, -h / 2 + (pressed ? 3 : 0), w, h, {
-      radius: 14,
-      fill: Phaser.Display.Color.ValueToColor(fill).darken(pressed ? 12 : 0).color,
-      edge,
-      sheen: this.opts.sheen,
-      alpha: dim,
-    });
+  private setPressed(down: boolean) {
+    if (!this.enabled) return;
+    this.slice.setTexture(BUTTON_TEX[this.variant][down ? 'down' : 'up']);
+    const dy = down ? 3 : 0;
+    this.label.y = -2 + dy;
+    if (this.iconImg) this.iconImg.y = -1 + dy;
+    this.setScale(down ? 0.97 : 1);
   }
 
   setEnabled(on: boolean) {
     this.enabled = on;
-    this.label.setAlpha(on ? 1 : 0.5);
+    this.slice.setTexture(on ? BUTTON_TEX[this.variant].up : BUTTON_DISABLED_TEX);
+    this.label.setColor(on ? buttonInk(this.variant) : '#77716a');
     this.iconImg?.setAlpha(on ? 1 : 0.5);
-    this.redraw(false);
     return this;
   }
 
   setLabel(text: string) {
     this.label.setText(text);
-    fitText(this.label, this.opts.width - (this.opts.icon ? 80 : 34));
+    fitText(this.label, this.btnW - (this.hasIcon ? this.btnH + 30 : 30));
+    return this;
+  }
+
+  setIcon(key: string) {
+    this.iconImg?.setTexture(key);
+    const size = Math.min(this.btnW, this.btnH) * 0.62;
+    this.iconImg?.setDisplaySize(size, size);
     return this;
   }
 }

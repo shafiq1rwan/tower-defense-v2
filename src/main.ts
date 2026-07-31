@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
 import { MAX_STAGE_W, MIN_STAGE_W, STAGE_H } from './core/constants';
-import { installOrientationGuard } from './core/pwa';
+import { installImmersiveMode, installOrientationGuard } from './core/pwa';
 
 import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
@@ -23,6 +23,7 @@ function stageWidth(): number {
 }
 
 installOrientationGuard();
+installImmersiveMode();
 
 new Phaser.Game({
   type: Phaser.AUTO,

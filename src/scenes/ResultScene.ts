@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
 import { CSS, DEPTH, FONT_DISPLAY, STAGE_H } from '../core/constants';
-import { Button, drawPanel, fadeToScene, formatGold, formatTime, styles } from '../core/ui';
+import { Button, board, drawPanel, fadeToScene, formatGold, formatTime, ribbon, styles } from '../core/ui';
 import { audio } from '../core/audio';
 import { save } from '../core/save';
 import { STAGES } from '../data/stages';
@@ -39,53 +39,49 @@ export class ResultScene extends Phaser.Scene {
     if (won) this.drawRays(W);
 
     const panelW = Math.min(620, W - 80);
-    const panelH = unlocked ? 470 : 400;
+    const panelH = unlocked ? 480 : 410;
     const cx = W / 2;
-    const cy = STAGE_H / 2 + 12;
+    const cy = STAGE_H / 2 + 16;
 
-    const g = this.add.graphics().setDepth(DEPTH.hud);
-    drawPanel(g, cx - panelW / 2, cy - panelH / 2, panelW, panelH, {
-      radius: 24,
-      fill: 0x6a4126,
-      edge: 0x3a2113,
-      sheen: 0x8f5c33,
-    });
+    board(this, cx, cy, panelW, panelH).setDepth(DEPTH.hud);
 
     const title = this.add
-      .text(cx, cy - panelH / 2 - 34, won ? 'VICTORY!' : 'DEFEAT', styles.title(won ? 62 : 54))
+      .text(cx, cy - panelH / 2 - 46, won ? 'VICTORY!' : 'DEFEAT', styles.title(won ? 62 : 54))
       .setOrigin(0.5)
       .setDepth(DEPTH.hud + 1)
       .setScale(0.6)
       .setAlpha(0);
     this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 420, ease: 'Back.easeOut' });
 
+    // Stage name rides a ribbon pinned to the board's top edge.
+    ribbon(this, cx, cy - panelH / 2 + 6, Math.min(panelW - 120, 380)).setDepth(DEPTH.hud + 1);
     this.add
-      .text(cx, cy - panelH / 2 + 30, stage.name, styles.heading(24, CSS.parchment))
+      .text(cx, cy - panelH / 2 - 2, stage.name, styles.plate(21, CSS.ribbonInk))
       .setOrigin(0.5)
-      .setDepth(DEPTH.hud + 1);
+      .setDepth(DEPTH.hud + 2);
 
     this.add
       .text(
         cx,
-        cy - panelH / 2 + 66,
+        cy - panelH / 2 + 56,
         won ? 'The goblin castle is rubble.' : 'Your walls did not hold. Try again stronger.',
-        styles.body(17, '#e9d9ba'),
+        styles.body(17, CSS.boardMuted),
       )
       .setOrigin(0.5)
       .setDepth(DEPTH.hud + 1);
 
     /* ------------------------------ stats ------------------------------ */
-    const rowY = cy - panelH / 2 + 116;
+    const rowY = cy - panelH / 2 + 104;
     this.statRow(cx, rowY, panelW, 'Time', formatTime(elapsed));
-    this.statRow(cx, rowY + 44, panelW, 'Gold earned', `+${formatGold(reward)}`, CSS.goldLight);
-    this.statRow(cx, rowY + 88, panelW, 'Purse', formatGold(save.data.gold), CSS.goldLight);
+    this.statRow(cx, rowY + 44, panelW, 'Gold earned', `+${formatGold(reward)}`);
+    this.statRow(cx, rowY + 88, panelW, 'Purse', formatGold(save.data.gold));
 
-    const nextY = rowY + 140;
+    const nextY = rowY + 138;
 
     if (unlocked) {
       const def = troopByKey(unlocked);
       const ug = this.add.graphics().setDepth(DEPTH.hud + 1);
-      drawPanel(ug, cx - panelW / 2 + 26, nextY - 12, panelW - 52, 84, {
+      drawPanel(ug, cx - panelW / 2 + 34, nextY - 12, panelW - 68, 84, {
         radius: 14,
         fill: 0x2f7a34,
         edge: 0x1b4a1e,
@@ -93,7 +89,7 @@ export class ResultScene extends Phaser.Scene {
       });
 
       const portrait = this.add
-        .sprite(cx - panelW / 2 + 82, nextY + 30, def.tex)
+        .sprite(cx - panelW / 2 + 90, nextY + 30, def.tex)
         .setOrigin(0.47, 0.45)
         .setScale(0.62)
         .setDepth(DEPTH.hud + 2)
@@ -108,38 +104,31 @@ export class ResultScene extends Phaser.Scene {
       });
 
       this.add
-        .text(cx - panelW / 2 + 130, nextY + 8, 'NEW TROOP UNLOCKED', styles.body(14, '#d6f5cf'))
+        .text(cx - panelW / 2 + 138, nextY + 8, 'NEW TROOP UNLOCKED', styles.body(14, '#d6f5cf'))
         .setDepth(DEPTH.hud + 2);
       this.add
-        .text(cx - panelW / 2 + 130, nextY + 30, def.name, styles.heading(24, CSS.goldLight))
+        .text(cx - panelW / 2 + 138, nextY + 30, def.name, styles.heading(24, CSS.goldLight))
         .setDepth(DEPTH.hud + 2);
     }
 
     /* ----------------------------- buttons ----------------------------- */
-    const btnY = cy + panelH / 2 - 44;
+    const btnY = cy + panelH / 2 - 58;
     const hasNext = won && stageIndex + 1 < STAGES.length;
-    const labels: Array<[string, () => void, number | undefined]> = [
-      ['Map', () => fadeToScene(this, 'StageSelect'), 0x4a2c19],
-      [won ? 'Replay' : 'Retry', () => fadeToScene(this, 'Battle', { stageIndex }), undefined],
+    const labels: Array<[string, () => void]> = [
+      ['Map', () => fadeToScene(this, 'StageSelect')],
+      [won ? 'Replay' : 'Retry', () => fadeToScene(this, 'Battle', { stageIndex })],
     ];
     if (hasNext) {
-      labels.push([
-        'Next Battle',
-        () => fadeToScene(this, 'Battle', { stageIndex: stageIndex + 1 }),
-        0x2f7a34,
-      ]);
+      labels.push(['Next Battle', () => fadeToScene(this, 'Battle', { stageIndex: stageIndex + 1 })]);
     }
 
-    const btnW = Math.min(190, (panelW - 40) / labels.length - 12);
+    const btnW = Math.min(190, (panelW - 60) / labels.length - 12);
     const totalW = btnW * labels.length + 12 * (labels.length - 1);
-    labels.forEach(([label, fn, fill], i) => {
+    labels.forEach(([label, fn], i) => {
       new Button(this, cx - totalW / 2 + btnW / 2 + i * (btnW + 12), btnY, label, fn, {
         width: btnW,
         height: 58,
         fontSize: 21,
-        fill,
-        edge: fill === 0x2f7a34 ? 0x1b4a1e : undefined,
-        sheen: fill === 0x2f7a34 ? 0x46a04c : undefined,
         sound: 'select',
       }).setDepth(DEPTH.hud + 2);
     });
@@ -148,23 +137,17 @@ export class ResultScene extends Phaser.Scene {
     audio.startMusic('menu');
   }
 
-  private statRow(
-    cx: number,
-    y: number,
-    panelW: number,
-    label: string,
-    value: string,
-    colour: string = CSS.parchment,
-  ) {
-    const inset = panelW / 2 - 44;
-    this.add.text(cx - inset, y, label, styles.body(18, '#e0cfae')).setOrigin(0, 0.5).setDepth(DEPTH.hud + 1);
+  private statRow(cx: number, y: number, panelW: number, label: string, value: string) {
+    const inset = panelW / 2 - 54;
+    this.add
+      .text(cx - inset, y, label, styles.body(18, CSS.boardMuted))
+      .setOrigin(0, 0.5)
+      .setDepth(DEPTH.hud + 1);
     this.add
       .text(cx + inset, y, value, {
         fontFamily: FONT_DISPLAY,
         fontSize: '24px',
-        color: colour,
-        stroke: '#3a2113',
-        strokeThickness: 5,
+        color: CSS.goldInk,
       })
       .setOrigin(1, 0.5)
       .setDepth(DEPTH.hud + 1);

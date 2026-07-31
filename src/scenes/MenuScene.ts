@@ -62,27 +62,21 @@ export class MenuScene extends Phaser.Scene {
     const cx = W / 2;
     new Button(this, cx, 272, 'Play', () => fadeToScene(this, 'StageSelect'), {
       width: 300,
-      height: 76,
+      height: 78,
       fontSize: 32,
-      fill: 0x2f7a34,
-      edge: 0x1b4a1e,
-      sheen: 0x46a04c,
       sound: 'select',
     }).setDepth(DEPTH.hud);
 
     new Button(this, cx, 356, 'Barracks', () => fadeToScene(this, 'Barracks'), {
       width: 300,
-      height: 64,
+      height: 66,
       fontSize: 26,
     }).setDepth(DEPTH.hud);
 
     this.installBtn = new Button(this, cx, 430, 'Install Game', () => void promptInstall(), {
       width: 300,
-      height: 56,
+      height: 58,
       fontSize: 22,
-      fill: 0x33507e,
-      edge: 0x1c2f4d,
-      sheen: 0x486ea6,
     });
     this.installBtn.setDepth(DEPTH.hud).setVisible(canInstall());
     this.unsubscribe = onInstallAvailability((available) => this.installBtn?.setVisible(available));
@@ -141,21 +135,21 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private buildSoundToggle() {
-    const label = () => (save.data.settings.music || save.data.settings.sfx ? '♪ Sound On' : '♪ Sound Off');
+    const icon = () => (save.data.settings.music || save.data.settings.sfx ? 'ui_icon_sound' : 'ui_icon_sound_off');
     const btn = new Button(
       this,
-      this.scale.width - 96,
-      44,
-      label(),
+      this.scale.width - 52,
+      46,
+      '',
       () => {
         const next = !(save.data.settings.sfx || save.data.settings.music);
         audio.setSfxEnabled(next);
         audio.setMusicEnabled(next);
         if (next) audio.startMusic('menu');
         else audio.stopMusic();
-        btn.setLabel(label());
+        btn.setIcon(icon());
       },
-      { width: 168, height: 46, fontSize: 17, fill: 0x4a2c19, edge: 0x2b1810 },
+      { width: 58, height: 58, icon: icon() },
     );
     btn.setDepth(DEPTH.hud);
   }

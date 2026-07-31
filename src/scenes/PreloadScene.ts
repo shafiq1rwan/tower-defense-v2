@@ -61,6 +61,25 @@ export class PreloadScene extends Phaser.Scene {
     }
 
     this.load.image('ui_gold', 'ui/gold_idle.png');
+
+    // The pack's UI kit: nine-slice buttons/boards, ribbons and icons.
+    for (const key of [
+      'ui_button_blue_9s',
+      'ui_button_blue_9s_pressed',
+      'ui_button_red_9s',
+      'ui_button_red_9s_pressed',
+      'ui_button_disable_9s',
+      'ui_carved_9s',
+      'ui_ribbon_yellow',
+      'ui_ribbon_blue',
+      'ui_ribbon_red',
+      'ui_icon_close',
+      'ui_icon_sound',
+      'ui_icon_sound_off',
+      'ui_icon_lock',
+    ]) {
+      this.load.image(key, `ui/${key.replace('ui_', '')}.png`);
+    }
   }
 
   create() {

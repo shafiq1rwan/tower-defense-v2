@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
-import { COLORS, CSS, DEPTH, FONT_DISPLAY, FONT_UI, HUD_TOP, STAGE_H, TOPBAR_H } from '../core/constants';
-import { Bar, Button, drawPanel, formatTime, styles } from '../core/ui';
+import { CSS, DEPTH, FONT_DISPLAY, FONT_UI, HUD_TOP, STAGE_H, TOPBAR_H } from '../core/constants';
+import { Bar, Button, board, drawPanel, formatTime, ribbon, styles } from '../core/ui';
 import { audio } from '../core/audio';
 import { save } from '../core/save';
 import { STAGES } from '../data/stages';
@@ -14,7 +14,7 @@ import type { BattleScene, Outcome } from './BattleScene';
 /* ------------------------------------------------------------------ */
 
 class TroopCard extends Phaser.GameObjects.Container {
-  private bg: Phaser.GameObjects.Graphics;
+  private slice: Phaser.GameObjects.NineSlice;
   private cdMask: Phaser.GameObjects.Graphics;
   private portrait: Phaser.GameObjects.Sprite;
   private costText: Phaser.GameObjects.Text;
@@ -42,9 +42,9 @@ class TroopCard extends Phaser.GameObjects.Container {
     this.cardW = w;
     this.cardH = h;
 
-    this.bg = scene.add.graphics();
-    this.add(this.bg);
-    this.paint(false);
+    // The card IS a pack button: teal when ready, grey art when not.
+    this.slice = scene.add.nineslice(0, 0, 'ui_button_blue_9s', undefined, w, h, 26, 26, 26, 26);
+    this.add(this.slice);
 
     this.portrait = scene.add
       .sprite(0, -h * 0.12, def.tex)
@@ -57,11 +57,11 @@ class TroopCard extends Phaser.GameObjects.Container {
     // Cost pill.
     const pillY = h / 2 - 22;
     const pill = scene.add.graphics();
-    pill.fillStyle(0x2a1f2d, 0.82);
-    pill.fillRoundedRect(-w / 2 + 8, pillY - 15, w - 16, 30, 10);
+    pill.fillStyle(0x2a2f38, 0.85);
+    pill.fillRoundedRect(-w / 2 + 10, pillY - 15, w - 20, 30, 10);
     this.add(pill);
 
-    const coin = scene.add.image(-w / 2 + 26, pillY, 'ui_gold').setScale(0.19);
+    const coin = scene.add.image(-w / 2 + 28, pillY, 'ui_gold').setScale(0.19);
     this.add(coin);
 
     this.costText = scene.add
@@ -69,7 +69,7 @@ class TroopCard extends Phaser.GameObjects.Container {
         fontFamily: FONT_DISPLAY,
         fontSize: '21px',
         color: CSS.goldLight,
-        stroke: '#2a1f2d',
+        stroke: '#22262e',
         strokeThickness: 4,
       })
       .setOrigin(0.5);
@@ -77,14 +77,14 @@ class TroopCard extends Phaser.GameObjects.Container {
 
     // Name strip.
     const name = scene.add
-      .text(0, -h / 2 + 15, def.name, {
+      .text(0, -h / 2 + 17, def.name, {
         fontFamily: FONT_UI,
         fontSize: '15px',
         fontStyle: '800',
-        color: CSS.parchment,
+        color: CSS.buttonInk,
       })
       .setOrigin(0.5);
-    if (name.width > w - 12) name.setFontSize(13);
+    if (name.width > w - 16) name.setFontSize(13);
     this.add(name);
 
     // Cooldown wipe + countdown.
@@ -105,13 +105,13 @@ class TroopCard extends Phaser.GameObjects.Container {
     // Keyboard hint, only meaningful with a physical keyboard attached.
     if (!scene.sys.game.device.input.touch || scene.sys.game.device.os.desktop) {
       const hint = scene.add
-        .text(w / 2 - 12, -h / 2 + 14, String(index + 1), {
+        .text(w / 2 - 14, -h / 2 + 16, String(index + 1), {
           fontFamily: FONT_DISPLAY,
           fontSize: '14px',
-          color: '#ffffff',
+          color: CSS.buttonInk,
         })
         .setOrigin(0.5)
-        .setAlpha(0.55);
+        .setAlpha(0.65);
       this.add(hint);
     }
 
@@ -121,10 +121,15 @@ class TroopCard extends Phaser.GameObjects.Container {
 
     this.on('pointerdown', () => {
       audio.unlock();
-      this.setScale(0.94);
+      if (this.lastReady) this.slice.setTexture('ui_button_blue_9s_pressed');
+      this.setScale(0.95);
     });
-    this.on('pointerout', () => this.setScale(1));
+    this.on('pointerout', () => {
+      this.applyTexture();
+      this.setScale(1);
+    });
     this.on('pointerup', () => {
+      this.applyTexture();
       this.scene.tweens.add({ targets: this, scale: 1, duration: 130, ease: 'Back.easeOut' });
       onDeploy();
     });
@@ -144,16 +149,8 @@ class TroopCard extends Phaser.GameObjects.Container {
     });
   }
 
-  private paint(affordable: boolean) {
-    const w = this.cardW;
-    const h = this.cardH;
-    this.bg.clear();
-    drawPanel(this.bg, -w / 2, -h / 2, w, h, {
-      radius: 14,
-      fill: affordable ? COLORS.wood : 0x4d3a2c,
-      edge: affordable ? COLORS.woodDark : 0x2f1f16,
-      sheen: affordable ? COLORS.woodLight : 0x5f4736,
-    });
+  private applyTexture() {
+    this.slice.setTexture(this.lastReady ? 'ui_button_blue_9s' : 'ui_button_disable_9s');
   }
 
   /** `affordable` drives the price colour; `ready` (affordable *and* off
@@ -164,7 +161,7 @@ class TroopCard extends Phaser.GameObjects.Container {
 
     if (ready !== this.lastReady) {
       this.lastReady = ready;
-      this.paint(ready);
+      this.applyTexture();
       this.portrait.setAlpha(ready ? 1 : 0.6);
     }
     if (affordable !== this.lastAfford) {
@@ -178,8 +175,8 @@ class TroopCard extends Phaser.GameObjects.Container {
       const h = this.cardH;
       this.cdMask.clear();
       if (cdFraction > 0) {
-        this.cdMask.fillStyle(0x0d0a12, 0.66);
-        this.cdMask.fillRoundedRect(-w / 2 + 3, -h / 2 + 3, w - 6, (h - 6) * cdFraction, 12);
+        this.cdMask.fillStyle(0x10141c, 0.55);
+        this.cdMask.fillRoundedRect(-w / 2 + 5, -h / 2 + 5, w - 10, (h - 10) * cdFraction, 12);
       }
     }
 
@@ -206,6 +203,7 @@ export class HudScene extends Phaser.Scene {
   private enemyBar!: Bar;
   private timerText!: Phaser.GameObjects.Text;
   private cannonBtn!: Phaser.GameObjects.Container;
+  private cannonSlice!: Phaser.GameObjects.NineSlice;
   private cannonFill!: Phaser.GameObjects.Graphics;
   private cannonLabel!: Phaser.GameObjects.Text;
   private cannonReady = false;
@@ -255,40 +253,41 @@ export class HudScene extends Phaser.Scene {
     const barW = Math.min(300, W * 0.24);
 
     this.add
-      .text(20, 16, 'YOUR CASTLE', styles.body(13, '#bfe4ff'))
+      .text(20, 12, 'YOUR CASTLE', styles.body(13, '#bfe4ff'))
       .setDepth(DEPTH.hud + 1);
-    this.playerBar = new Bar(this, 20 + barW / 2, 42, barW, 17, { fill: 0x63c23c });
+    this.playerBar = new Bar(this, 20 + barW / 2, 40, barW, 17, { fill: 0x63c23c });
     this.playerBar.setDepth(DEPTH.hud + 1);
 
     this.add
-      .text(W - 20, 16, 'GOBLIN CASTLE', styles.body(13, '#ffc7b5'))
+      .text(W - 20, 12, 'GOBLIN CASTLE', styles.body(13, '#ffc7b5'))
       .setOrigin(1, 0)
       .setDepth(DEPTH.hud + 1);
-    this.enemyBar = new Bar(this, W - 20 - barW / 2, 42, barW, 17, { fill: 0xe0553a });
+    this.enemyBar = new Bar(this, W - 20 - barW / 2, 40, barW, 17, { fill: 0xe0553a });
     this.enemyBar.setDepth(DEPTH.hud + 1);
 
+    // Stage name on a gold ribbon; the battle clock rides on the same banner.
     const stage = STAGES[this.battle.stageIndex];
+    const nameProbe = this.add.text(0, 0, stage.name, styles.heading(22)).setVisible(false);
+    const ribbonW = Math.min(W * 0.34, Math.max(260, nameProbe.width + 130));
+    nameProbe.destroy();
+
+    ribbon(this, W / 2, 36, ribbonW).setDepth(DEPTH.hud + 1);
     this.add
-      .text(W / 2, 15, stage.name, styles.heading(22))
-      .setOrigin(0.5, 0)
-      .setDepth(DEPTH.hud + 1);
+      .text(W / 2, 22, stage.name, styles.plate(21, CSS.ribbonInk))
+      .setOrigin(0.5, 0.5)
+      .setDepth(DEPTH.hud + 2);
     this.timerText = this.add
-      .text(W / 2, 42, '0:00', styles.body(16, '#d8c7a6'))
-      .setOrigin(0.5, 0)
-      .setDepth(DEPTH.hud + 1);
+      .text(W / 2, 45, '0:00', styles.body(14, '#7a5c1d'))
+      .setOrigin(0.5, 0.5)
+      .setDepth(DEPTH.hud + 2);
   }
 
   private buildBottomBar() {
     const W = this.scale.width;
     const H = STAGE_H - HUD_TOP;
 
-    const g = this.add.graphics().setDepth(DEPTH.hud);
-    drawPanel(g, -20, HUD_TOP, W + 40, H + 30, {
-      radius: 22,
-      fill: 0x6a4126,
-      edge: 0x3a2113,
-      sheen: 0x8f5c33,
-    });
+    // The deploy bar is one carved board; its torn edges bleed off-screen.
+    board(this, W / 2, HUD_TOP + H / 2 + 16, W + 70, H + 60).setDepth(DEPTH.hud);
 
     /* -- wallet ------------------------------------------------------- */
     const walletW = Math.min(232, W * 0.19);
@@ -319,7 +318,7 @@ export class HudScene extends Phaser.Scene {
       .setDepth(DEPTH.hud + 2);
 
     this.goldBar = new Bar(this, walletX, HUD_TOP + 88, walletW - 26, 13, {
-      fill: COLORS.gold,
+      fill: 0xffc53d,
       ghost: false,
     });
     this.goldBar.setDepth(DEPTH.hud + 2);
@@ -328,25 +327,25 @@ export class HudScene extends Phaser.Scene {
     const cannonW = Math.min(150, W * 0.13);
     const rightEdge = W - 16;
 
-    this.cannonBtn = this.buildCannon(rightEdge - cannonW / 2, HUD_TOP + 58, cannonW, 84);
+    this.cannonBtn = this.buildCannon(rightEdge - cannonW / 2, HUD_TOP + 62, cannonW, 86);
 
     this.speedBtn = new Button(
       this,
-      rightEdge - cannonW - 12 - 40,
-      HUD_TOP + 34,
+      rightEdge - cannonW - 12 - 42,
+      HUD_TOP + 40,
       `${this.battle.speed}x`,
       () => this.battle.setSpeed(this.battle.speed === 1 ? 2 : 1),
-      { width: 74, height: 42, fontSize: 20, fill: 0x4a2c19, edge: 0x2b1810 },
+      { width: 80, height: 52, fontSize: 20 },
     );
     this.speedBtn.setDepth(DEPTH.hud + 2);
 
     new Button(
       this,
-      rightEdge - cannonW - 12 - 40,
-      HUD_TOP + 88,
+      rightEdge - cannonW - 12 - 42,
+      HUD_TOP + 98,
       'II',
       () => this.battle.setPaused(true),
-      { width: 74, height: 42, fontSize: 20, fill: 0x4a2c19, edge: 0x2b1810 },
+      { width: 80, height: 52, fontSize: 20 },
     ).setDepth(DEPTH.hud + 2);
 
     /* -- troop cards --------------------------------------------------- */
@@ -360,7 +359,7 @@ export class HudScene extends Phaser.Scene {
       74,
       126,
     );
-    const cardH = 128;
+    const cardH = 132;
     const totalW = cardW * roster.length + gap * (roster.length - 1);
     const startX = leftEdge + (available - totalW) / 2 + cardW / 2;
 
@@ -385,25 +384,17 @@ export class HudScene extends Phaser.Scene {
   private buildCannon(x: number, y: number, w: number, h: number) {
     const c = this.add.container(x, y).setDepth(DEPTH.hud + 2);
 
-    const bg = this.add.graphics();
-    drawPanel(bg, -w / 2, -h / 2, w, h, {
-      radius: 16,
-      fill: 0x53306e,
-      edge: 0x2a1739,
-      sheen: 0x6f4590,
-    });
-    c.add(bg);
+    this.cannonSlice = this.add.nineslice(0, 0, 'ui_button_disable_9s', undefined, w, h, 26, 26, 26, 26);
+    c.add(this.cannonSlice);
 
     this.cannonFill = this.add.graphics();
     c.add(this.cannonFill);
 
     this.cannonLabel = this.add
-      .text(0, 2, 'CANNON', {
+      .text(0, 0, 'CANNON', {
         fontFamily: FONT_DISPLAY,
         fontSize: '19px',
-        color: CSS.parchment,
-        stroke: '#2a1739',
-        strokeThickness: 5,
+        color: '#77716a',
       })
       .setOrigin(0.5);
     c.add(this.cannonLabel);
@@ -413,15 +404,29 @@ export class HudScene extends Phaser.Scene {
     (c.input as Phaser.Types.Input.InteractiveObject).cursor = 'pointer';
     c.on('pointerdown', () => {
       audio.unlock();
-      c.setScale(0.94);
+      if (this.cannonReady) this.cannonSlice.setTexture('ui_button_red_9s_pressed');
+      c.setScale(0.95);
     });
-    c.on('pointerout', () => c.setScale(1));
+    c.on('pointerout', () => {
+      this.paintCannon();
+      c.setScale(1);
+    });
     c.on('pointerup', () => {
+      this.paintCannon();
       this.tweens.add({ targets: c, scale: 1, duration: 130, ease: 'Back.easeOut' });
       this.battle.fireCannon();
     });
 
     return c;
+  }
+
+  private paintCannon() {
+    this.cannonSlice.setTexture(this.cannonReady ? 'ui_button_red_9s' : 'ui_button_disable_9s');
+    if (this.cannonReady) {
+      this.cannonLabel.setColor('#ffe9c8').setStroke('#5e1c10', 4);
+    } else {
+      this.cannonLabel.setColor('#77716a').setStroke('#00000000', 0);
+    }
   }
 
   /* ------------------------------ runtime ---------------------------- */
@@ -456,13 +461,13 @@ export class HudScene extends Phaser.Scene {
 
     this.cannonFill.clear();
     if (frac < 1) {
-      this.cannonFill.fillStyle(0x000000, 0.55);
-      this.cannonFill.fillRoundedRect(-w / 2 + 4, -h / 2 + 4, w - 8, (h - 8) * (1 - frac), 12);
+      this.cannonFill.fillStyle(0x10141c, 0.5);
+      this.cannonFill.fillRoundedRect(-w / 2 + 5, -h / 2 + 5, w - 10, (h - 10) * (1 - frac), 12);
     }
 
     if (b.cannonReady !== this.cannonReady) {
       this.cannonReady = b.cannonReady;
-      this.cannonLabel.setColor(this.cannonReady ? CSS.goldLight : CSS.parchment);
+      this.paintCannon();
       if (this.cannonReady) {
         this.tweens.add({
           targets: this.cannonBtn,
@@ -523,42 +528,38 @@ export class HudScene extends Phaser.Scene {
     dim.fillStyle(0x0d0a12, 0.72).fillRect(0, 0, W, STAGE_H);
     layer.add(dim);
 
-    const panelW = 380;
-    const panelH = 320;
-    const pg = this.add.graphics();
-    drawPanel(pg, W / 2 - panelW / 2, STAGE_H / 2 - panelH / 2, panelW, panelH, {
-      radius: 22,
-      fill: 0x6a4126,
-      edge: 0x3a2113,
-      sheen: 0x8f5c33,
-    });
-    layer.add(pg);
+    const panelW = 400;
+    const panelH = 330;
+    layer.add(board(this, W / 2, STAGE_H / 2 + 10, panelW, panelH));
 
+    layer.add(ribbon(this, W / 2, STAGE_H / 2 + 10 - panelH / 2, 250));
     layer.add(
-      this.add.text(W / 2, STAGE_H / 2 - 116, 'Paused', styles.heading(40, CSS.gold)).setOrigin(0.5),
+      this.add
+        .text(W / 2, STAGE_H / 2 + 10 - panelH / 2 - 8, 'Paused', styles.plate(26, CSS.ribbonInk))
+        .setOrigin(0.5),
     );
 
-    const mk = (dy: number, label: string, fn: () => void, fill?: number) =>
+    const mk = (dy: number, label: string, fn: () => void, variant: 'blue' | 'red' = 'blue') =>
       layer.add(
         new Button(this, W / 2, STAGE_H / 2 + dy, label, fn, {
-          width: 280,
-          height: 58,
+          width: 290,
+          height: 60,
           fontSize: 24,
-          fill,
+          variant,
         }),
       );
 
-    mk(-40, 'Resume', () => this.battle.setPaused(false));
-    mk(30, 'Restart', () => {
+    mk(-52, 'Resume', () => this.battle.setPaused(false));
+    mk(18, 'Restart', () => {
       this.battle.setPaused(false);
       audio.stopMusic();
       this.scene.stop();
       this.battle.scene.restart({ stageIndex: this.battle.stageIndex });
     });
-    mk(100, 'Quit to Map', () => this.battle.quitToMap(), 0x8a3f2c);
+    mk(88, 'Quit to Map', () => this.battle.quitToMap(), 'red');
 
     const sound = this.add
-      .text(W / 2, STAGE_H / 2 + 146, soundLabel(), styles.body(17, '#e8d7b6'))
+      .text(W / 2, STAGE_H / 2 + 138, soundLabel(), styles.body(17, CSS.boardMuted))
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
     sound.on('pointerup', () => {

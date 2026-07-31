@@ -62,6 +62,12 @@ export const CSS = {
   green: '#74b83c',
   white: '#ffffff',
   danger: '#ff7a5c',
+  /* Text tones for the Tiny Swords UI kit surfaces. */
+  boardInk: '#43301f', // headings on the tan carved boards
+  boardMuted: '#6d573f', // secondary text on the boards
+  goldInk: '#8a5813', // gold values on light surfaces
+  ribbonInk: '#5d4310', // titles on the gold ribbons
+  buttonInk: '#2e3f4c', // labels on the teal buttons
 } as const;
 
 export const FONT_DISPLAY = '"Luckiest Guy", system-ui, sans-serif';
